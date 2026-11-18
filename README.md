@@ -10,6 +10,9 @@ An endless, ad-free sudoku web app built for the phone. It collects the best fea
 3. Launch it from the home screen. It runs fullscreen and works offline.
 
 ## Features
+- **Two ways to play:**
+  - **Choose difficulty**: start any Easy, Medium, Hard or Expert game.
+  - **Progressive mode**: an endless ladder of levels that slowly gets harder. Levels 1–6 are Easy, starting at about 42 clues and dropping to 32. Levels 7–14 are Medium and need more and more Medium techniques. Levels 15–22 are Hard and allow fewer and fewer clues. From level 23 it's Expert, needing more and more Expert techniques. Solve a level to unlock the next, and earn ★★★ with no hints or mistakes. The next level is prepared in the background while you play.
 - **Endless puzzles**: every puzzle has exactly one solution and is rated by the hardest technique it needs (Easy, Medium, Hard, Expert), not by how many clues it has.
 - **Teaching hints** in three steps: where to look, which technique applies, then the exact move with an explanation.
 - **Daily puzzle**: a calendar of past days you can still play, plus a streak.

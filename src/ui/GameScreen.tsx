@@ -7,6 +7,7 @@ import {
 } from '../game'
 import { tap } from '../haptics'
 import { formatTime, parseDateKey, type Settings } from '../store'
+import type { WinResult } from './App'
 import { Board, type BoardHighlight } from './Board'
 import {
   IconBack, IconCheck, IconClose, IconErase, IconFill, IconHint, IconMore, IconPause, IconPlay, IconRedo, IconRestart, IconShare, IconUndo,
@@ -16,14 +17,14 @@ interface Props {
   game: Game
   settings: Settings
   onChange: (g: Game) => void
-  onWin: (g: Game) => { isBest: boolean }
+  onWin: (g: Game) => WinResult
   onHome: () => void
-  onNewGame: (d: Game['difficulty']) => void
+  next: [string, () => void]
 }
 
 interface HintState { hint: Hint; stage: number }
 
-export function GameScreen({ game, settings, onChange, onWin, onHome, onNewGame }: Props) {
+export function GameScreen({ game, settings, onChange, onWin, onHome, next }: Props) {
   const [selected, setSelected] = useState<number[]>(() => [game.values.findIndex((v) => !v)].filter((x) => x >= 0))
   const [mode, setMode] = useState<Mode>('pen')
   const [activeDigit, setActiveDigit] = useState(0)
@@ -32,7 +33,7 @@ export function GameScreen({ game, settings, onChange, onWin, onHome, onNewGame 
   const [paused, setPaused] = useState(false)
   const [menu, setMenu] = useState(false)
   const [checkCells, setCheckCells] = useState<number[] | null>(null)
-  const [won, setWon] = useState<{ isBest: boolean; game: Game } | null>(null)
+  const [won, setWon] = useState<(WinResult & { game: Game }) | null>(null)
   const [toast, setToast] = useState('')
   const gameRef = useRef(game)
   gameRef.current = game
@@ -255,7 +256,7 @@ export function GameScreen({ game, settings, onChange, onWin, onHome, onNewGame 
   if (settings.colourMode) modes.push(['colour', 'Colour'])
   const title = game.kind === 'daily' && game.date
     ? `Daily · ${parseDateKey(game.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}`
-    : DIFF_NAMES[game.difficulty]
+    : game.kind === 'progressive' ? `Level ${game.level}` : DIFF_NAMES[game.difficulty]
 
   return (
     <div class="screen game">
@@ -263,7 +264,7 @@ export function GameScreen({ game, settings, onChange, onWin, onHome, onNewGame 
         <button class="icon-btn" aria-label="Home" onClick={onHome}><IconBack /></button>
         <div class="bar-title">
           <span>{title}</span>
-          {game.kind === 'daily' && <small>{DIFF_NAMES[game.difficulty]}</small>}
+          {(game.kind === 'daily' || game.kind === 'progressive') && <small>{DIFF_NAMES[game.difficulty]}</small>}
         </div>
         <div class="bar-right">
           {settings.showTimer && (
@@ -332,16 +333,15 @@ export function GameScreen({ game, settings, onChange, onWin, onHome, onNewGame 
       {won && (
         <div class="win-backdrop">
           <div class="win">
-            <div class="win-badge">{won.isBest ? 'New best time!' : 'Solved'}</div>
+            <div class="win-badge">{won.game.kind === 'progressive' ? `Level ${won.game.level} complete` : won.isBest ? 'New best time!' : 'Solved'}</div>
+            {won.stars && <div class="win-stars" aria-label={`${won.stars} stars`}>{[1, 2, 3].map((k) => <span class={k <= won.stars! ? 'on' : ''}>★</span>)}</div>}
             <h2>{formatTime(won.game.elapsed)}</h2>
             <p class="win-sub">{DIFF_NAMES[won.game.difficulty]}{won.game.kind === 'daily' ? ' · Daily' : ''}</p>
             <div class="win-stats">
               <div><strong>{won.game.hints}</strong><span>hints</span></div>
               <div><strong>{won.game.mistakes}</strong><span>mistakes</span></div>
             </div>
-            <button class="btn primary" onClick={() => onNewGame(won.game.difficulty === 5 ? 4 : won.game.difficulty)}>
-              New {DIFF_NAMES[won.game.difficulty === 5 ? 4 : won.game.difficulty]} game
-            </button>
+            <button class="btn primary" onClick={next[1]}>{next[0]}</button>
             <button class="btn" onClick={onHome}>Home</button>
           </div>
         </div>

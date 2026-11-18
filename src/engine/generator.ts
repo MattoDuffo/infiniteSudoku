@@ -1,7 +1,7 @@
 import { gridToString } from './grid'
 import { mulberry32, shuffle, type Rng } from './rng'
 import { countSolutions, randomSolution } from './solver'
-import { rate } from './techniques'
+import { rate, TECH_INFO, type TechId } from './techniques'
 
 export type Difficulty = 1 | 2 | 3 | 4
 
@@ -11,6 +11,17 @@ export interface Puzzle {
   difficulty: Difficulty
   clues: number
   score: number
+  /** Number of solving steps that needed a technique at the puzzle's own level. */
+  tierSteps: number
+}
+
+export interface GenOptions {
+  /** Stop removing clues at this count (more clues = gentler). */
+  minClues?: number
+  /** Require at least this many steps at the target level. */
+  minTierSteps?: number
+  /** Only accept puzzles with at most this many clues (fewer clues = more work). */
+  maxClues?: number
 }
 
 const MIN_CLUES: Record<Difficulty, number> = { 1: 36, 2: 27, 3: 22, 4: 17 }
@@ -19,14 +30,16 @@ const MIN_CLUES: Record<Difficulty, number> = { 1: 36, 2: 27, 3: 22, 4: 17 }
  * Generates a puzzle with a unique solution whose hardest required technique matches `target`.
  * Clues are removed in rotationally symmetric pairs.
  */
-export function generate(target: Difficulty, rng: Rng = mulberry32((Math.random() * 2 ** 32) >>> 0), maxAttempts = 20000): Puzzle {
+export function generate(target: Difficulty, rng: Rng = mulberry32((Math.random() * 2 ** 32) >>> 0), opts: GenOptions = {}, maxAttempts = 20000): Puzzle {
+  const floor = opts.minClues ?? MIN_CLUES[target]
+  const minTier = opts.minTierSteps ?? 1
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
     const solution = randomSolution(rng)
     const g = solution.slice()
     const pairs = shuffle(Array.from({ length: 41 }, (_, i) => i), rng)
     let clues = 81
     for (const i of pairs) {
-      if (clues <= MIN_CLUES[target]) break
+      if (clues <= floor) break
       const j = 80 - i
       const a = g[i], b = g[j]
       g[i] = 0; g[j] = 0
@@ -47,8 +60,10 @@ export function generate(target: Difficulty, rng: Rng = mulberry32((Math.random(
         if (r.solved && r.level <= target) break
       }
     }
-    if (r.solved && r.level === target) {
-      return { puzzle: gridToString(g), solution: gridToString(solution), difficulty: target, clues: g.filter(Boolean).length, score: r.score }
+    const tierSteps = Object.entries(r.techs).reduce((n, [id, c]) => n + (TECH_INFO[id as TechId].level === target ? c! : 0), 0)
+    const clueCount = g.filter(Boolean).length
+    if (r.solved && r.level === target && tierSteps >= minTier && clueCount <= (opts.maxClues ?? 81)) {
+      return { puzzle: gridToString(g), solution: gridToString(solution), difficulty: target, clues: clueCount, score: r.score, tierSteps }
     }
   }
   throw new Error('Could not generate puzzle')

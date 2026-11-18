@@ -11,8 +11,9 @@ export interface Snap { values: number[]; notes: number[]; corner: number[]; col
 
 export interface Game extends Snap {
   id: string
-  kind: 'random' | 'daily' | 'custom'
+  kind: 'random' | 'daily' | 'custom' | 'progressive'
   date?: string
+  level?: number
   difficulty: Difficulty
   puzzle: string
   solution: string
@@ -29,11 +30,11 @@ export interface InputOptions { autoRemoveNotes: boolean; countMistakes: boolean
 
 const HISTORY_CAP = 250
 
-export function newGame(p: { puzzle: string; solution: string; difficulty: Difficulty; kind: Game['kind']; date?: string; id?: string }): Game {
+export function newGame(p: { puzzle: string; solution: string; difficulty: Difficulty; kind: Game['kind']; date?: string; id?: string; level?: number }): Game {
   const values = [...p.puzzle].map(Number)
   return {
     id: p.id ?? `${p.kind}-${Date.now().toString(36)}`,
-    kind: p.kind, date: p.date, difficulty: p.difficulty,
+    kind: p.kind, date: p.date, level: p.level, difficulty: p.difficulty,
     puzzle: p.puzzle, solution: p.solution,
     values, notes: new Array(81).fill(0), corner: new Array(81).fill(0), colours: new Array(81).fill(0),
     elapsed: 0, mistakes: 0, hints: 0, created: Date.now(), history: [], future: [],

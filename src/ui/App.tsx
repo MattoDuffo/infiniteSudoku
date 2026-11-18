@@ -2,19 +2,23 @@ import { useEffect, useRef, useState } from 'preact/hooks'
 import { countSolutions, solve } from '../engine/solver'
 import { parseGrid, gridToString, isConsistent } from '../engine/grid'
 import { rate } from '../engine/techniques'
-import { fillPool, generateIn, takePuzzle } from '../generator-client'
-import { newGame, type Difficulty, type Game } from '../game'
+import { fillPool, generateIn, levelPuzzle, prefetchLevel, takePuzzle } from '../generator-client'
+import { levelSpec, starsFor } from '../progression'
+import { DIFF_NAMES, newGame, type Difficulty, type Game } from '../game'
 import { setHaptics } from '../haptics'
 import { dailyDifficulty, dailySeed, dateKey, store, type Settings } from '../store'
 import { DailyScreen } from './Daily'
 import { GameScreen } from './GameScreen'
 import { Home } from './Home'
 import { ImportScreen } from './Import'
+import { ProgressiveScreen } from './Progressive'
 import { Learn } from './Learn'
 import { SettingsScreen } from './SettingsScreen'
 import { StatsScreen } from './Stats'
 
-export type Screen = 'home' | 'game' | 'stats' | 'settings' | 'learn' | 'daily' | 'import'
+export interface WinResult { isBest: boolean; stars?: 1 | 2 | 3 }
+
+export type Screen = 'home' | 'game' | 'stats' | 'settings' | 'learn' | 'daily' | 'import' | 'progressive'
 
 function applyTheme(theme: Settings['theme']) {
   const root = document.documentElement
@@ -119,11 +123,39 @@ export function App() {
     startGame(newGame({ ...p, difficulty: d, kind: 'daily', date, id }))
   }
 
-  const onWin = (g: Game) => {
+  const openLevel = async () => {
+    const level = store.progress().level
+    const id = `prog-${level}`
+    const existing = store.games()[id]
+    if (existing) { startGame(existing); prefetchLevel(level + 1); return }
+    setLoading(`Preparing level ${level}…`)
+    const p = await levelPuzzle(level)
+    setLoading(null)
+    if (!p) return alert('Something went wrong. Please try again.')
+    startGame(newGame({ ...p, difficulty: levelSpec(level).difficulty, kind: 'progressive', level, id }))
+    prefetchLevel(level + 1)
+  }
+
+  const onWin = (g: Game): WinResult => {
     clearTimeout(saveTimer.current)
-    const res = store.recordWin(g)
+    const res: WinResult = store.recordWin(g)
     store.setCurrent(null)
+    if (g.kind === 'progressive' && g.level) {
+      const prog = store.progress()
+      const stars = starsFor(g.hints, g.mistakes)
+      prog.stars[g.level] = Math.max(prog.stars[g.level] ?? 0, stars) as 1 | 2 | 3
+      if (prog.level === g.level) prog.level = g.level + 1
+      store.saveProgress(prog)
+      res.stars = stars
+      prefetchLevel(prog.level)
+    }
     return res
+  }
+
+  const next = (g: Game): [string, () => void] => {
+    if (g.kind === 'progressive' && g.level) return [`Level ${g.level + 1}`, openLevel]
+    const d = (g.difficulty === 5 ? 4 : g.difficulty) as Difficulty
+    return [`New ${DIFF_NAMES[d]} game`, () => newRandom(d)]
   }
 
   const goHome = () => {
@@ -135,14 +167,15 @@ export function App() {
 
   let body
   if (screen === 'game' && game) {
-    body = <GameScreen key={game.id} game={game} settings={settings} onChange={updateGame} onWin={onWin} onHome={goHome} onNewGame={newRandom} />
+    body = <GameScreen key={game.id} game={game} settings={settings} onChange={updateGame} onWin={onWin} onHome={goHome} next={next(game)} />
   } else if (screen === 'stats') body = <StatsScreen onBack={goHome} />
   else if (screen === 'settings') body = <SettingsScreen settings={settings} onChange={setSettings} onBack={goHome} />
   else if (screen === 'learn') body = <Learn onBack={goHome} />
   else if (screen === 'daily') body = <DailyScreen onBack={goHome} onPlay={openDaily} />
+  else if (screen === 'progressive') body = <ProgressiveScreen onBack={goHome} onPlay={openLevel} />
   else if (screen === 'import') body = <ImportScreen onBack={goHome} onStart={startGame} />
   else {
-    body = <Home games={unfinished()} onContinue={startGame} onNew={newRandom} onDaily={() => openDaily(dateKey())}
+    body = <Home games={unfinished()} onContinue={startGame} onNew={newRandom} onDaily={() => openDaily(dateKey())} onLevel={openLevel}
       onNavigate={setScreen} />
   }
 

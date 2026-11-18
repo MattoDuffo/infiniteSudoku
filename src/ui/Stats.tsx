@@ -30,7 +30,7 @@ export function StatsScreen({ onBack }: { onBack: () => void }) {
           <ul class="history">
             {history.map((h) => (
               <li>
-                <span>{new Date(h.finished).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}{h.kind === 'daily' ? ' · Daily' : h.kind === 'custom' ? ' · Entered' : ''}</span>
+                <span>{new Date(h.finished).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}{h.kind === 'daily' ? ' · Daily' : h.kind === 'custom' ? ' · Entered' : h.kind === 'progressive' ? ` · Level ${h.level}` : ''}</span>
                 <span class="muted">{h.hints ? `${h.hints} hint${h.hints > 1 ? 's' : ''}` : ''}</span>
                 <strong>{formatTime(h.time)}</strong>
               </li>

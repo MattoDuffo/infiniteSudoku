@@ -1,4 +1,5 @@
 import { DIFF_NAMES, progress, type Difficulty, type Game } from '../game'
+import { levelSpec, tierProgress } from '../progression'
 import { dailyDifficulty, dailyStreak, dateKey, formatTime, store } from '../store'
 import type { Screen } from './App'
 import { IconBook, IconCalendar, IconChart, IconGear, IconImport } from './icons'
@@ -8,15 +9,18 @@ interface Props {
   onContinue: (g: Game) => void
   onNew: (d: Difficulty) => void
   onDaily: () => void
+  onLevel: () => void
   onNavigate: (s: Screen) => void
 }
 
-export function Home({ games, onContinue, onNew, onDaily, onNavigate }: Props) {
+export function Home({ games, onContinue, onNew, onDaily, onLevel, onNavigate }: Props) {
   const today = dateKey()
   const log = store.daily()
   const doneToday = !!log[today]
   const streak = dailyStreak(log)
   const todayDiff = dailyDifficulty(today)
+  const level = store.progress().level
+  const levelTier = levelSpec(level).difficulty
 
   return (
     <div class="screen home">
@@ -25,7 +29,7 @@ export function Home({ games, onContinue, onNew, onDaily, onNavigate }: Props) {
         <p>Endless puzzles. No ads. No lives.</p>
       </header>
 
-      {games.slice(0, 2).map((g) => (
+      {games.filter((g) => g.kind !== 'progressive').slice(0, 2).map((g) => (
         <button class="card continue" onClick={() => onContinue(g)}>
           <div>
             <span class="eyebrow">Continue</span>
@@ -46,7 +50,19 @@ export function Home({ games, onContinue, onNew, onDaily, onNavigate }: Props) {
       </button>
 
       <section class="new-game">
-        <h2>New game</h2>
+        <h2>Progressive</h2>
+        <div class="card progressive">
+          <button class="prog-main" onClick={onLevel}>
+            <span class="eyebrow">Level {level}</span>
+            <strong>{games.some((g) => g.id === `prog-${level}`) ? 'Continue' : 'Play'} · {DIFF_NAMES[levelTier]}</strong>
+            <span class="prog-bar"><i style={{ width: `${Math.max(tierProgress(level), 0.04) * 100}%` }} /></span>
+          </button>
+          <button class="prog-more" onClick={() => onNavigate('progressive')} aria-label="Progressive mode details">›</button>
+        </div>
+      </section>
+
+      <section class="new-game">
+        <h2>Choose difficulty</h2>
         <div class="diff-grid">
           {([1, 2, 3, 4] as Difficulty[]).map((d) => (
             <button class={`diff diff-${d}`} onClick={() => onNew(d)}>

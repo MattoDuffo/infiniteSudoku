@@ -1,5 +1,6 @@
 /** Talks to the generator worker and keeps a small pool of ready puzzles per difficulty. */
-import type { Puzzle } from './engine/generator'
+import type { GenOptions, Puzzle } from './engine/generator'
+import { levelSeed, levelSpec } from './progression'
 import { store } from './store'
 
 type D = 1 | 2 | 3 | 4
@@ -21,11 +22,11 @@ function getWorker(): Worker {
   return worker
 }
 
-export function generateIn(difficulty: D, seed = (Math.random() * 2 ** 32) >>> 0): Promise<Puzzle | null> {
+export function generateIn(difficulty: D, seed = (Math.random() * 2 ** 32) >>> 0, opts?: GenOptions): Promise<Puzzle | null> {
   return new Promise((resolve) => {
     const id = nextId++
     pending.set(id, resolve)
-    getWorker().postMessage({ id, difficulty, seed })
+    getWorker().postMessage({ id, difficulty, seed, opts })
   })
 }
 
@@ -62,4 +63,20 @@ export async function takePuzzle(d: D): Promise<Puzzle | null> {
   const p = await generateIn(d)
   setTimeout(fillPool, 500)
   return p
+}
+
+/** Puzzle for a progressive level: from the prefetch cache when available. */
+export async function levelPuzzle(level: number): Promise<Puzzle | null> {
+  const cached = store.levelCache()
+  if (cached?.level === level) return cached.puzzle
+  const { difficulty, opts } = levelSpec(level)
+  return generateIn(difficulty, levelSeed(level), opts)
+}
+
+/** Generates the next level in the background so it's ready the moment you win. */
+export async function prefetchLevel(level: number) {
+  if (store.levelCache()?.level === level) return
+  const { difficulty, opts } = levelSpec(level)
+  const p = await generateIn(difficulty, levelSeed(level), opts)
+  if (p) store.saveLevelCache({ level, puzzle: p })
 }

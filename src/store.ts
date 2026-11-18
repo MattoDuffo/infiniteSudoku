@@ -25,11 +25,11 @@ export const DEFAULT_SETTINGS: Settings = {
 
 export interface DiffStats { played: number; won: number; best?: number; total: number; streak: number; bestStreak: number; clean: number }
 export type Stats = Record<Difficulty, DiffStats>
-export interface HistoryEntry { id: string; difficulty: Difficulty; kind: Game['kind']; date?: string; time: number; hints: number; mistakes: number; finished: number }
+export interface HistoryEntry { id: string; difficulty: Difficulty; kind: Game['kind']; date?: string; level?: number; time: number; hints: number; mistakes: number; finished: number }
 /** Daily results, keyed by YYYY-MM-DD. */
 export type DailyLog = Record<string, { time: number; hints: number }>
 
-const K = { settings: 'is:settings', games: 'is:games', current: 'is:current', stats: 'is:stats', history: 'is:history', pool: 'is:pool', daily: 'is:daily' }
+const K = { progress: 'is:progress', levelCache: 'is:levelcache', settings: 'is:settings', games: 'is:games', current: 'is:current', stats: 'is:stats', history: 'is:history', pool: 'is:pool', daily: 'is:daily' }
 
 function load<T>(key: string, fallback: T): T {
   try {
@@ -44,7 +44,14 @@ function save(key: string, value: unknown) {
 const emptyDiff = (): DiffStats => ({ played: 0, won: 0, total: 0, streak: 0, bestStreak: 0, clean: 0 })
 const emptyStats = (): Stats => ({ 1: emptyDiff(), 2: emptyDiff(), 3: emptyDiff(), 4: emptyDiff(), 5: emptyDiff() })
 
+export interface Progress { level: number; stars: Record<number, 1 | 2 | 3> }
+
 export const store = {
+  progress: (): Progress => ({ level: 1, stars: {}, ...load<Partial<Progress>>(K.progress, {}) }),
+  saveProgress: (p: Progress) => save(K.progress, p),
+  levelCache: (): { level: number; puzzle: Puzzle } | null => load(K.levelCache, null),
+  saveLevelCache: (c: { level: number; puzzle: Puzzle } | null) => save(K.levelCache, c),
+
   settings: (): Settings => ({ ...DEFAULT_SETTINGS, ...load<Partial<Settings>>(K.settings, {}) }),
   saveSettings: (s: Settings) => save(K.settings, s),
 
@@ -76,7 +83,7 @@ export const store = {
     if (s.best === undefined || isBest) s.best = g.elapsed
     save(K.stats, stats)
     const hist = this.history()
-    hist.unshift({ id: g.id, difficulty: g.difficulty, kind: g.kind, date: g.date, time: g.elapsed, hints: g.hints, mistakes: g.mistakes, finished: Date.now() })
+    hist.unshift({ id: g.id, difficulty: g.difficulty, kind: g.kind, date: g.date, level: g.level, time: g.elapsed, hints: g.hints, mistakes: g.mistakes, finished: Date.now() })
     save(K.history, hist.slice(0, 300))
     if (g.kind === 'daily' && g.date) {
       const d = this.daily()
