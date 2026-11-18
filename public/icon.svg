@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" fill="#f5f3ee"/>
+  <g fill="none" stroke="#2b2d31">
+    <rect x="76" y="76" width="360" height="360" rx="28" stroke-width="16"/>
+    <path d="M196 76v360M316 76v360M76 196h360M76 316h360" stroke-width="10"/>
+  </g>
+  <rect x="204" y="204" width="104" height="104" rx="10" fill="#3d6fd8"/>
+  <text x="256" y="290" font-family="-apple-system, Helvetica, Arial, sans-serif" font-size="96" font-weight="600" fill="#fff" text-anchor="middle">9</text>
+  <text x="136" y="170" font-family="-apple-system, Helvetica, Arial, sans-serif" font-size="80" font-weight="500" fill="#2b2d31" text-anchor="middle">4</text>
+  <text x="376" y="410" font-family="-apple-system, Helvetica, Arial, sans-serif" font-size="80" font-weight="500" fill="#2b2d31" text-anchor="middle">7</text>
+</svg>
